@@ -268,6 +268,10 @@ __global__ void mapKernel(
   // 5. Calculate the position of element in out_array according to out_index and out_strides
   // 6. Apply the unary function to the input element and write the output to the out memory
 
+  int out_pos = index_to_position() // ?
+  
+
+
   assert(false && "Not Implemented");
   /// END HW1_1
 }
