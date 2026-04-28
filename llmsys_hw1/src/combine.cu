@@ -423,7 +423,50 @@ __global__ void reduceKernel(
   // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
   // 5. Write the reduced value to out memory
 
-  assert(false && "Not Implemented");
+    int thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (thread_id >= out_size) {
+        return;
+    }
+
+    int out_ordinal = thread_id;
+    /*
+    python 部分已处理shape？
+        out_shape = list(a.shape)
+        out_shape[dim] = 1
+        out = a.zeros(tuple(out_shape))
+    */
+    to_index(out_ordinal, out_shape, out_index, shape_size);    // get out_index
+    int out_position = index_to_position(out_index, out_strides, shape_size);   // 为什么 out_strides 是可以提前知道的？
+
+    // float reduce_value;
+    int in_index[MAX_DIMS];
+    for (int i = 0; i < MAX_DIMS; i++){
+        in_index[i] = out_index[i];
+    }
+    in_index[reduce_dim] = 0;
+    int in_position = index_to_position(in_index, a_strides, shape_size);
+
+    // switch(fn_id){
+    //     case ADD_FUNC: {
+    //         reduce_value = 0;
+    //     }
+    //     case MUL_FUNC: {
+    //         reduce_value = 1;
+    //     } 
+    //     case MAX_FUNC: {
+    //         reduce_value = a_storage[in_position];
+    //     }
+    // }
+
+    for (int i = 0; i < a_shape[reduce_dim]; i++) {
+        in_index[reduce_dim] = i;
+        in_position = index_to_position(in_index, a_strides, shape_size);
+        reduce_value = fn(fn_id, reduce_value, a_storage[in_position]);
+    }
+
+    out[out_position] = reduce_value;
+//   assert(false && "Not Implemented");
   /// END HW1_3
 }
 
