@@ -52,3 +52,5 @@ pip-wheel-metadata/
 *.log
 tmp/
 temp/
+
+*.pdf

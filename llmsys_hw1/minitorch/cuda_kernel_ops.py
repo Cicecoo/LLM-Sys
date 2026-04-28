@@ -124,8 +124,43 @@ class CudaKernelOps(TensorOps):
             # BEGIN HW1_2
             # TODO
             # 1. Call the tensorZip function implemented in CUDA
+            """
+            __global__ void zipKernel(
+                float *out,
+                int *out_shape,
+                int *out_strides,
+                int out_size,
+                int out_shape_size,
+                float *a_storage,
+                int *a_shape,
+                int *a_strides,
+                int a_shape_size,
+                float *b_storage,
+                int *b_shape,
+                int *b_strides,
+                int b_shape_size,
+                int fn_id)
+            """
+            lib.tensorZip(
+                out._tensor._storage,
+                out._tensor._shape.astype(np.int32),
+                out._tensor._strides.astype(np.int32),
+                out.size,
+                len(out.shape),
+                a._tensor._storage,
+                a._tensor._shape.astype(np.int32),
+                a._tensor._strides.astype(np.int32),
+                a.size,
+                len(a.shape),
+                b._tensor._storage,
+                b._tensor._shape.astype(np.int32),
+                b._tensor._strides.astype(np.int32),
+                b.size,
+                len(b.shape),
+                fn_id
+            )
 
-            raise NotImplementedError("Zip Function Not Implemented Yet")
+            # raise NotImplementedError("Zip Function Not Implemented Yet")
             # END HW1_2
             
             return out
