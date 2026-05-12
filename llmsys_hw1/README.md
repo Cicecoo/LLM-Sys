@@ -269,7 +269,7 @@ __global__ void mm(float A[N][N], float B[N][N], float C[N][N]) {
 }
 ```
 
-<figure markdown="span"> ![Image title](hw1/simple_parallel.png){width="300"} <figcaption>Figure 3: Simple parallelization.</figcaption> </figure>
+<figure markdown="span"> ![Image title](./hw1/simple_parallel.png){width="300"} <figcaption>Figure 3: Simple parallelization.</figcaption> </figure>
 
 #### Hints - Shared Memory Tiling (Optional)
 

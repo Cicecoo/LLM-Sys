@@ -526,7 +526,39 @@ __global__ void MatrixMultiplyKernel(
   // 6. Synchronize to make sure all threads are done computing the output tile for (row, col)
   // 7. Write the output to global memory
 
-  assert(false && "Not Implemented");
+    // int batch = blockIdx.z;
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    int col = blockIdx.y * blockDim.y + threadIdx.y;
+
+    /**
+     *               p             p
+     *       n  *  n []    --->  m []
+     *     m []
+     * 
+     */
+
+    if (row >= out_shape[1] || col >= out_shape[2]) {
+        return;
+    }
+
+    int out_index[3] = {batch, row, col};
+    int a_index[3] = {batch, row, 0};
+    int b_index[3] = {batch, 0, col};
+
+    int out_position = index_to_position(out_index, out_strides, 3);
+    int in_a_position, in_b_position;
+
+    float sum = 0.;
+    for (int k = 0; k < a_shape[2]; k++){
+        a_index[2] = k;
+        b_index[1] = k;
+        in_a_position = index_to_position(a_index, a_strides, 3);
+        in_b_position = index_to_position(b_index, b_strides, 3);
+        sum += a_storage[in_a_position] * b_storage[in_b_position];
+    }
+
+    out[out_position] = sum;
+//   assert(false && "Not Implemented");
   /// END HW1_4
 }
 
