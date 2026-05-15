@@ -1,0 +1,13 @@
+# Minitorch
+pycuda==2025.1.2
+numpy==2.3.5
+numba==0.63.1
+torch==2.9.1
+
+# Project
+embeddings==0.0.8
+datasets==4.4.1
+
+# Tests
+pytest==9.0.2
+hypothesis==6.148.7
