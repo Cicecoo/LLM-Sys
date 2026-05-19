@@ -38,8 +38,13 @@ def binary_cross_entropy_loss(out, y):
     # 2. Compute log softmax of out and (ones - out)
     # 3. Calculate binary cross entropy and take mean
     # HINT: Use minitorch.tensor_functions.ones
+
+    y_ones = minitorch.ones(y.shape)    # 调用错误
+    # out is after sigmoid, already prob
+    # 1/N \Sigma [y*log(y_hat) + (1-y)*log(1-y_hat)]
+    return (y * out.log() + (y_ones - y) * (y_ones - out).log()).mean()
     
-    raise NotImplementedError("cross_entropy_loss not implemented")
+    # raise NotImplementedError("cross_entropy_loss not implemented")
     
     # END ASSIGN2_3
 
@@ -238,8 +243,18 @@ class SentenceSentimentTrain:
                 # 3. Calculate the loss using binary_cross_entropy_loss function
                 # 4. Call backward function of the loss
                 # 5. Use Optimizer to take a gradient step
+
+                batch_data = X_train[batch_num * batch_size:(batch_num + 1) * batch_size]
+                batch_label = y_train[batch_num * batch_size:(batch_num + 1) * batch_size]
+                batch_data_tensor = minitorch.tensor(batch_data, backend=BACKEND, requires_grad=True)
+                y = minitorch.tensor(batch_label, backend=BACKEND, requires_grad=True)
+
+                out = model.forward(batch_data_tensor)
+                loss = binary_cross_entropy_loss(out, y)
+                loss.backward()
+                optim.step()
                 
-                raise NotImplementedError("SentenceSentimentTrain train not implemented")
+                # raise NotImplementedError("SentenceSentimentTrain train not implemented")
 
                 # END ASSIGN2_3
                 
@@ -261,8 +276,22 @@ class SentenceSentimentTrain:
                 # 2. Get the output of the model
                 # 3. Obtain validation predictions using the get_predictions_array function, and add to the validation_predictions list
                 # 4. Obtain the validation accuracy using the get_accuracy function, and add to the validation_accuracy list
+
+                # batch_data = X_val[batch_num * batch_size:(batch_num + 1) * batch_size]   # 切片问题
+                # batch_label = y_val[batch_num * batch_size:(batch_num + 1) * batch_size]
+                # batch_data_tensor = minitorch.tensor(batch_data, backend=BACKEND)
+                # batch_label_tensor = minitorch.tensor(batch_label, backend=BACKEND)
+                val_data_tensor = minitorch.tensor(X_val, backend=BACKEND)
+                val_label_tensor = minitorch.tensor(y_val, backend=BACKEND)
+
+                output = model.forward(val_data_tensor)
+
+                preds = get_predictions_array(val_label_tensor, output)
+                validation_predictions += preds
+                acc = get_accuracy(preds)
+                validation_accuracy.append(acc)     # 为什么
                 
-                raise NotImplementedError("SentenceSentimentTrain train not implemented")
+                # raise NotImplementedError("SentenceSentimentTrain train not implemented")
                 
                 # END ASSIGN2_3
                 
@@ -342,7 +371,8 @@ if __name__ == "__main__":
     embedding_dim = 50
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(
-        load_dataset("nyu-mll/glue", "sst2"),
+        # load_dataset("nyu-mll/glue", "sst2"),
+        load_dataset("../glue", "sst2"),    # 路径问题
         embeddings.GloveEmbedding("wikipedia_gigaword", d_emb=embedding_dim, show_progress=True),
         train_size,
         validation_size,
