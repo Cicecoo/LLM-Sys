@@ -42,7 +42,7 @@ def binary_cross_entropy_loss(out, y):
     y_ones = minitorch.ones(y.shape)    # 调用错误
     # out is after sigmoid, already prob
     # 1/N \Sigma [y*log(y_hat) + (1-y)*log(1-y_hat)]
-    return (y * out.log() + (y_ones - y) * (y_ones - out).log()).mean()
+    return  - (y * out.log() + (y_ones - y) * (y_ones - out).log()).mean()
     
     # raise NotImplementedError("cross_entropy_loss not implemented")
     
