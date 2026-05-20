@@ -1,0 +1,7 @@
+torch==2.9.1
+datasets==3.4.0
+tokenizers
+transformers
+fire
+sacrebleu
+wrapt

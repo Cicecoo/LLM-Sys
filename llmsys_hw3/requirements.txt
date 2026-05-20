@@ -1,0 +1,12 @@
+colorama==0.4.3
+hypothesis == 6.148.7
+mypy == 0.971
+numba == 0.63.1
+numpy == 2.3.5
+pre-commit == 2.20.0
+pytest == 9.0.2
+pytest-env
+pytest-runner == 5.2
+typing_extensions
+pycuda == 2025.1.2
+embeddings==0.0.8
