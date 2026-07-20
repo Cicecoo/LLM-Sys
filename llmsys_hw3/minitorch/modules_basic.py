@@ -16,6 +16,11 @@ from .tensor import Tensor
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 
+def RParam(*shape, backend: TensorBackend):
+    r = 0.1 * (rand(shape, backend=backend) - 0.5)
+    return Parameter(r)
+
+
 class Embedding(Module):
     def __init__(self, num_embeddings: int, embedding_dim: int, backend: TensorBackend):
         super().__init__()
@@ -93,7 +98,13 @@ class Linear(Module):
         """
         self.out_size = out_size
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+
+        self.weights = RParam(in_size, out_size, backend=backend) # shape: tuple
+        self.use_bias = bias
+        if bias:        
+            self.bias = RParam(out_size, backend=backend)
+
+        # raise NotImplementedError
         ### END ASSIGN3_2
 
     def forward(self, x: Tensor):
@@ -107,7 +118,19 @@ class Linear(Module):
         """
         batch, in_size = x.shape
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+
+        # output = minitorch.MatMul.apply(x.view(batch, in_size), self.weights.value)
+        output = (
+            x.view(batch, in_size, 1) * 
+            self.weights.value.view(1, in_size, self.out_size)
+        ).sum(1).view(batch, self.out_size)
+        
+        if self.use_bias:
+            output += self.bias.value.view(1, self.out_size)
+        
+        return output
+
+        # raise NotImplementedError
         ### END ASSIGN3_2
 
 
