@@ -211,9 +211,19 @@ def logsumexp(input: Tensor, dim: int) -> Tensor:
             NOTE: minitorch functions/tensor functions typically keep dimensions if you provide a dimensions.
     """  
     ### BEGIN ASSIGN3_1
-    # 为避免数值过大而引入的恒等变形
-    max = Max.apply(input, tensor([dim]))
+    # 为避免数值过大而引入的恒等变形：
+    # 对于 [100, 1, 3], e^100 过大; 超过 float32 
+    # 但 [0, -99, -97], e^(-99) 虽然可能下溢到 0, 但 lse 本来就类似平滑 max，差值大时小值影响小
+    # 而且 100 + log(e^0 + e^-99 + e^-97) == log(e^100 + e^1 + e^3)
+    
+    # max = Max.apply(input, tensor([dim])) # 也可以, .item() 只要求 tensor 中只有一个元素
+    max = Max.apply(input, tensor(dim))     # 支持 0 维 tensor
+    # max = Max.apply(input, dim)   # 需要显示构造 tensor ？
+    
     lse = (input - max).exp().sum(dim=dim).log() + max
+    # 对于 log(P) = a, log(Q) = b, 想得到 P+Q ？
+    # 需要 P+Q = e^a + e^b
+    # log(P+Q) = log(e^a + e^b) = lse([a, b])
     
     return lse
     # raise NotImplementedError
