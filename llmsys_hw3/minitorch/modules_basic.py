@@ -16,11 +16,6 @@ from .tensor import Tensor
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 
-def RParam(*shape, backend: TensorBackend):
-    r = 0.1 * (rand(shape, backend=backend) - 0.5)
-    return Parameter(r)
-
-
 class Embedding(Module):
     def __init__(self, num_embeddings: int, embedding_dim: int, backend: TensorBackend):
         super().__init__()
@@ -38,7 +33,14 @@ class Embedding(Module):
         self.num_embeddings = num_embeddings # Vocab size
         self.embedding_dim  = embedding_dim  # Embedding Dimension
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+        # one-hot 向量并不需要自己构造，只是 W 需要适应其形状；
+        # 好像还是需要自己构造？forward 中
+        self.weights = Parameter(tensor_from_numpy(
+            np.random.randn(num_embeddings, embedding_dim),  # TODO：是这个意思吗？
+            backend=self.backend,
+            requires_grad=True  # ?
+        ))
+        # raise NotImplementedError
         ### END ASSIGN3_2
     
     def forward(self, x: Tensor):
@@ -52,7 +54,30 @@ class Embedding(Module):
         """
         bs, seq_len = x.shape
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+        # v_shape = list(x.shape)
+        # one_hot = tensor_from_numpy(np.zeros(v_shape.append(self.num_embeddings)))
+        # one_hot = tensor_from_numpy(np.zeros(bs, seq_len, self.num_embeddings))
+        # one_hot = tensor_from_numpy(
+        #     np.eye(self.num_embeddings)[x] 
+        #     )
+        
+        # 框架已提供 one_hot()
+        v = one_hot(x, self.num_embeddings) 
+        # v: (bs, seq_len, num_embeddings)
+        
+        # v 形状为 (bs, seq_len, num_embeddings)
+        # weights 形状为 (num_embeddings, embedding_dim) -> (1, num_embeddings, embedding_dim)
+        # v @ self.weights.value 矩阵乘 assert 不通过 TODO: 是矩阵乘实现有问题吗？
+        
+        # 先合并前两维
+        v = v.contiguous().view(bs*seq_len, self.num_embeddings)
+        # v: (bs*seq_len, num_embeddings)
+        
+        # 这样就绕过广播了
+        output = v @ self.weights.value
+        
+        return output.view(bs, seq_len, self.embedding_dim)
+        # raise NotImplementedError
         ### END ASSIGN3_2
 
     
@@ -78,7 +103,21 @@ class Dropout(Module):
         Note: If p_dropout is 0, directly return the input tensor. Otherwise, the random seed may cause problems
         """
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+        # if self.p_dropout == 0:
+        #     return x
+        if self.p_dropout == 0 or not self.training:    # "During training"
+            return x
+        
+        # mask = rand(x.shape, backend=x.backend) 
+        # 跟测试一致的话需要 np.random
+        mask = tensor_from_numpy(
+            np.random.rand(*x.shape),   # x.shape 前加 * 解包元素
+            backend=x.backend
+        )
+        
+        return x * (mask > self.p_dropout) / (1-self.p_dropout) # TODO: 会不会除0？
+        
+        # raise NotImplementedError
         ### END ASSIGN3_2
 
 
@@ -98,12 +137,25 @@ class Linear(Module):
         """
         self.out_size = out_size
         ### BEGIN ASSIGN3_2
-
-        self.weights = RParam(in_size, out_size, backend=backend) # shape: tuple
+       
+        # Uniform(-1/sqrt(in_size), 1/sqrt(in_size)) TODO: 这是怎么来的？
+        # self.in_size = in_size    需要不需要，为什么
         self.use_bias = bias
-        if bias:        
-            self.bias = RParam(out_size, backend=backend)
+        # self.backend = backend
+        
+        self.weights = Parameter(tensor_from_numpy(
+            (np.random.rand(in_size, self.out_size)-0.5)/np.sqrt(in_size),   # 低效？
+            backend,
+            requires_grad=True
+        ))
 
+        if self.use_bias:
+            self.bias = Parameter(tensor_from_numpy(
+                (np.random.rand(out_size, )-0.5)/np.sqrt(in_size),
+                backend,
+                requires_grad=True
+            ))
+        
         # raise NotImplementedError
         ### END ASSIGN3_2
 
@@ -119,14 +171,10 @@ class Linear(Module):
         batch, in_size = x.shape
         ### BEGIN ASSIGN3_2
 
-        # output = minitorch.MatMul.apply(x.view(batch, in_size), self.weights.value)
-        output = (
-            x.view(batch, in_size, 1) * 
-            self.weights.value.view(1, in_size, self.out_size)
-        ).sum(1).view(batch, self.out_size)
+        output = x @ self.weights.value
         
         if self.use_bias:
-            output += self.bias.value.view(1, self.out_size)
+            output += self.bias.value
         
         return output
 
@@ -150,7 +198,14 @@ class LayerNorm1d(Module):
         self.dim = dim
         self.eps = eps
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+        
+        # self.weights = ones((self.dim, ), backend=backend)
+        # self.bias = zeros((self.dim, ), backend=backend)
+        # 可学习参数必须要包装
+        self.weights = Parameter(ones((self.dim, ), backend=backend))
+        self.bias = Parameter(zeros((self.dim, ), backend=backend))
+        
+        # raise NotImplementedError
         ### END ASSIGN3_2
 
     def forward(self, x: Tensor) -> Tensor:
@@ -166,5 +221,21 @@ class LayerNorm1d(Module):
         """
         batch, dim = x.shape
         ### BEGIN ASSIGN3_2
-        raise NotImplementedError
+        
+        mean = x.mean(dim=1)
+        var = x.var(dim=1)
+        norm = (x-mean) / (var + self.eps) ** 0.5   # TODO: 没有 sqrt 
+        # output = self.weights * norm + self.bias
+        output = norm * self.weights.value + self.bias.value    # TODO: 访问方式
+        
+        return output
+        # raise NotImplementedError
         ### END ASSIGN3_2
+
+
+"""
+NOTE
+1. @ 和 *; python 的 “运算符重载”
+2. embedding 的原理、layernorm 的原理
+3. Parameter 封装需更新参数: 框架的实现
+"""
