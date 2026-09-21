@@ -1,3 +1,7 @@
+llmsys_code_examples/
+***/tests/
+
+
 # OS / editor files
 .DS_Store
 Thumbs.db
