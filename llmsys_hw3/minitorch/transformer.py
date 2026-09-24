@@ -41,16 +41,27 @@ class MultiHeadAttention(Module):
         self.backend = backend
         self.n_embd = n_embd 
         self.n_head = n_head
-        self.causal = causal
+        self.causal = causal    # 因果 mask
         self.attn_hidden_dim = n_embd // n_head
 
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        # raise NotImplementedError
         # self.q_projection = 
         # self.k_projection = 
         # self.v_projection = 
         # self.out_projection = 
         # self.dropout = 
+        
+        # 一次生成所有 head 的 Q (以及 K, V), 所以 linear 尺寸不用 attn_hidden_dim 而用 n_embd
+        # d_v 与 d_k(q) 不要求相同，只是此处按论文设置为了 d_k = d_v = d_model / n_head
+        # TODO linear 不支持 batch_size, seq_len, n_embd = x.shape
+        # 因为 matmul 还不支持
+        self.q_projection = Linear(self.n_embd, self.n_embd, bias, self.backend) 
+        self.k_projection = Linear(self.n_embd, self.n_embd, bias, self.backend) 
+        self.v_projection = Linear(self.n_embd, self.n_embd, bias, self.backend) 
+        
+        self.out_projection = Linear(self.n_embd, self.n_embd, bias, self.backend)
+        self.dropout = Dropout(p_dropout)
         ### END ASSIGN3_3
 
     def create_causal_mask(self, seq_len):
@@ -87,7 +98,27 @@ class MultiHeadAttention(Module):
         """
         batch_size, seq_len, n_embd = x.shape
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        # raise NotImplementedError
+        
+        # TODO linear 不支持 batch_size, seq_len, n_embd = x.shape
+        x = x.contiguous().view(batch_size * seq_len, n_embd)
+        q = self.q_projection(x)
+        k = self.k_projection(x)
+        v = self.v_projection(x)
+        # (batch_size * seq_len, n_embd)
+        
+        q = q.view(batch_size, seq_len, self.n_head, self.attn_hidden_dim)
+        q = q.permute(0, 2, 1, 3)
+        
+        k = k.view(batch_size, seq_len, self.n_head, self.attn_hidden_dim)
+        # 框架未实现 .transpose()
+        # k = k.permute(0, 2, 1, 3)
+        # kT = k.transpose(-2, -1)
+        kT = k.permute(0, 2, 3, 1)
+        
+        v = v.view(batch_size, seq_len, self.n_head, self.attn_hidden_dim)
+        v = v.permute(0, 2, 1, 3)
+        
         ### END ASSIGN3_3
         return q, kT, v
     
@@ -110,7 +141,33 @@ class MultiHeadAttention(Module):
         result = None
         
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        # 矩阵乘法只考虑最后两维，前面的维度都被作为索引，所以不需要显式按 head 计算
+        scores = q @ kT / self.attn_hidden_dim**0.5 
+        
+        if self.causal: 
+            # mask_np = np.triu(
+            #     np.full(
+            #         (queries_len, queries_len),
+            #         -np.inf,
+            #         dtype=np.float32
+            #     ),
+            #     k = 1                
+            # )
+            # mask = tensor_from_numpy(mask_np, self.backend)
+            # scores = scores + mask
+            scores = scores + self.create_causal_mask(queries_len)
+        
+        # scores (batch, n_head, queries_len, keys_len)
+        # scores (batch, n_head, seq_len, seq_len)
+        result = softmax(scores, dim=3) # TODO: 理解
+        result = result @ v
+        
+        # 此时形状为 (batch, n_head, queries_len, dim_v)
+        result = result.permute(0, 2, 1, 3)
+        # result = result.view(batch_size, queries_len, self.n_embd)
+        result = result.contiguous().view(batch_size, queries_len, self.n_embd)
+        
+        # raise NotImplementedError
         ### END ASSIGN3_3
 
         return result
@@ -127,7 +184,19 @@ class MultiHeadAttention(Module):
         """
         batch_size, seq_len, n_embd = x.shape
         ### BEGIN ASSIGN3_3
-        raise NotImplementedError
+        # causal mask 在 softmax 之前，所以放在 self_attention 里
+        q, kT, v = self.project_to_query_key_value(x)
+        
+        attn = self.self_attention(q, kT, v)
+        # (batch_size, seq_len, n_embd)
+        
+        attn = attn.contiguous().view(batch_size * seq_len, n_embd)
+        result = self.out_projection(attn)
+        result = result.view(batch_size, seq_len, n_embd)
+        result = self.dropout(result)
+        
+        return result
+        # raise NotImplementedError
         ### END ASSIGN3_3
 
 
