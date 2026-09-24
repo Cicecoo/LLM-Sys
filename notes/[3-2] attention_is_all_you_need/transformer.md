@@ -42,7 +42,7 @@ $Q$ 的尺寸 $n_{token}$ 是由输入序列长度（token 数）决定的，而
 
 ### Embedding
 
-论文只说用了“可学习的 embidding”， [annotated-transformer](https://nlp.seas.harvard.edu/annotated-transformer/) 中
+论文只说用了“可学习的 embedding”， [annotated-transformer](https://nlp.seas.harvard.edu/annotated-transformer/) 中
 则直接解释为 `nn.Embedding`；
 
 `nn.Embedding` 本质 `nn.LookupTable`，[参考]() 
